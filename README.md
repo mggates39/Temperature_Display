@@ -58,6 +58,10 @@ Wire the momentary Pushbutton
 | 3,4 | Ground | Ground Rail |
 
 ## Program
+The code is a relativly simple program.  After using the default setup for both the temperature sensor and the OLED Display, it loops through checking and debouncing the button to toggle the display mode: Celcius temperature, Farenheit temperature, and Humidity.
+
+## Circuit Diagram
+The repository contains a [Fritzing] (https://fritzing.org/home/) Diagram
 
 ## References
 - Adafruit display and sensor libraries can be found in the IDE Library Manager
