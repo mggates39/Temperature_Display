@@ -2,10 +2,7 @@
 An electronic temperature sensor with display
 
 ## Description 
-This demo project is just a simple keypad with display to drive a lock relay.  It also has
-a buzzer to generate tones for keypress, success and failure.
-
-The pass codde is hard coded in the application.
+This demo project is just a simple sensor reader with various display modes.
 
 ## Parts 
 - 1 Arduino Nano 33 IOT
@@ -16,7 +13,7 @@ The pass codde is hard coded in the application.
 - 1 Breadboard
 - Assorted Jumper wires
 
-## Libraries
+## Arduino Libraries
 - Wire
 - Adafruit_Sensor
 - Adafruit_AM2320
@@ -61,7 +58,7 @@ Wire the momentary Pushbutton
 The code is a relativly simple program.  After using the default setup for both the temperature sensor and the OLED Display, it loops through checking and debouncing the button to toggle the display mode: Celcius temperature, Farenheit temperature, and Humidity.
 
 ## Circuit Diagram
-The repository contains a [Fritzing] (https://fritzing.org/home/) Diagram
+The repository contains a [Fritzing](https://fritzing.org/home/) Diagram
 
 ## References
 - Adafruit display and sensor libraries can be found in the IDE Library Manager
