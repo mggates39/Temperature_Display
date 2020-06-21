@@ -2,6 +2,8 @@
 #include "Adafruit_Sensor.h"
 #include "Adafruit_AM2320.h"
 #include <Adafruit_SSD1306.h>
+#include <RTCZero.h>
+
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -30,6 +32,19 @@ int lastButtonState = HIGH; // the previous reading from the input pin
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 50;   // the debounce time; increase if the output flickers
 
+/* Create an rtc object */
+RTCZero rtc;
+
+/* Change these values to set the current initial time */
+const byte seconds = 0;
+const byte minutes = 0;
+const byte hours = 16;
+
+/* Change these values to set the current initial date */
+const byte day = 15;
+const byte month = 6;
+const byte year = 15;
+
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 void setup()
@@ -56,6 +71,18 @@ void setup()
   display.display();
 
   display.cp437(true); // Use full 256 char 'Code Page 437' font
+
+  rtc.begin(); // initialize RTC
+
+  // Set the time
+  rtc.setHours(hours);
+  rtc.setMinutes(minutes);
+  rtc.setSeconds(seconds);
+
+  // Set the date
+  rtc.setDay(day);
+  rtc.setMonth(month);
+  rtc.setYear(year);
 
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
@@ -99,7 +126,7 @@ void loop()
       if (buttonState == LOW)
       {
         displayMode++;
-        if (displayMode > 2)
+        if (displayMode > 3)
         {
           displayMode = 0;
         }
@@ -118,19 +145,22 @@ void loop()
 
   switch (displayMode)
   {
-    case 0: // Centigrade Temp
+    case 1: // Centigrade Temp
       display.print(temperature);
       display.write(9);
       display.println("C");
       break;
-    case 1: // Farenheight Temp
+    case 2: // Farenheight Temp
       display.print(((temperature * 9.0) / 5.0) + 32.0);
       display.write(9);
       display.println("F");
       break;
-    default:
+    case 3:
       display.print(humidity);
       display.println(" %");
+      break;
+    default:
+      displayTime();
   }
   display.display();
 }
@@ -140,10 +170,32 @@ void readSensor()
   temperature = am2320.readTemperature();
   humidity = am2320.readHumidity();
 
-  if (isnan(temperature) || isnan(humidity)) 
+  if (isnan(temperature) || isnan(humidity))
   {
     resetFunc();
   }
 
   lastSensorReadTime = millis();
+}
+
+void displayTime()
+{
+  display.print(" ");
+  display2digits(rtc.getHours());
+  if ((rtc.getSeconds() % 2) == 0)
+  {
+    display.print(":");
+  } else {
+    display.print(" ");
+  }
+  display2digits(rtc.getMinutes());
+}
+
+void display2digits(int number)
+{
+  if (number < 10)
+  {
+    display.print("0");
+  }
+  display.print(number);
 }

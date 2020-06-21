@@ -15,6 +15,7 @@ This demo project is just a simple sensor reader with various display modes.
 
 ## Arduino Libraries
 - Wire
+- RTCZero
 - Adafruit_Sensor
 - Adafruit_AM2320
 - Adafruit_SSD1306
