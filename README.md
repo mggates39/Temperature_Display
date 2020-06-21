@@ -19,6 +19,9 @@ This demo project is just a simple sensor reader with various display modes.
 - Adafruit_Sensor
 - Adafruit_AM2320
 - Adafruit_SSD1306
+- WiFiNINA
+- WiFiUdp
+- NTPClient
 
 ## Wiring
 First we will wire up the power rails of the breadboard

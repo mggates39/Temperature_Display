@@ -2,8 +2,10 @@
 #include "Adafruit_Sensor.h"
 #include "Adafruit_AM2320.h"
 #include <Adafruit_SSD1306.h>
+#include <WiFiNINA.h>
+#include <WiFiUdp.h>
+#include <NTPClient.h>
 #include <RTCZero.h>
-
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
@@ -32,18 +34,24 @@ int lastButtonState = HIGH; // the previous reading from the input pin
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 50;   // the debounce time; increase if the output flickers
 
+WiFiUDP ntpUDP;
+// By default 'pool.ntp.org' is used with 60 seconds update interval and
+// no offset
+NTPClient timeClient(ntpUDP);
+
+// You can specify the time server pool and the offset, (in seconds)
+// additionaly you can specify the update interval (in milliseconds).
+// NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
+
 /* Create an rtc object */
 RTCZero rtc;
 
-/* Change these values to set the current initial time */
-const byte seconds = 0;
-const byte minutes = 0;
-const byte hours = 16;
+char ssid[] = "************";      //  your network SSID (name)
+char pass[] = "***********";       // your network password
+int keyIndex = 0;                  // your network key Index number (needed only for WEP)
 
-/* Change these values to set the current initial date */
-const byte day = 15;
-const byte month = 6;
-const byte year = 15;
+// Initialize the Wifi client library
+WiFiClient client;
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -72,17 +80,26 @@ void setup()
 
   display.cp437(true); // Use full 256 char 'Code Page 437' font
 
-  rtc.begin(); // initialize RTC
+  connectToAP();    // connect the board to the access point
+  printWifiStatus();
 
-  // Set the time
-  rtc.setHours(hours);
-  rtc.setMinutes(minutes);
-  rtc.setSeconds(seconds);
+  timeClient.begin();
 
-  // Set the date
-  rtc.setDay(day);
-  rtc.setMonth(month);
-  rtc.setYear(year);
+  timeClient.update();
+  timeClient.setTimeOffset(-14400);
+  Serial.println(timeClient.getFormattedTime());
+  Serial.println(timeClient.getDay());
+
+  // Turn off the WiFi after getting ntp to save power for now.
+  // We will actually use the WiFi to send data later, but
+  // I am running this on a battery and I need to save power now.
+  timeClient.end();
+  client.stop();
+  WiFi.disconnect();
+  WiFi.end();
+
+  rtc.begin();
+  rtc.setEpoch(timeClient.getEpochTime());
 
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
@@ -198,4 +215,47 @@ void display2digits(int number)
     display.print("0");
   }
   display.print(number);
+}
+
+void printWifiStatus() {
+  Serial.print("Firmware: ");
+  Serial.println(WiFi.firmwareVersion());
+
+  // print the SSID of the network you're attached to:
+  Serial.print("SSID: ");
+  Serial.println(WiFi.SSID());
+
+  // print your WiFi shield's IP address:
+  IPAddress ip = WiFi.localIP();
+  Serial.print("IP Address: ");
+  Serial.println(ip);
+
+  // print the received signal strength:
+  long rssi = WiFi.RSSI();
+  Serial.print("signal strength (RSSI):");
+  Serial.print(rssi);
+  Serial.println(" dBm");
+}
+
+void connectToAP() {
+  // check for the presence of the shield:
+  if (WiFi.status() == WL_NO_SHIELD) {
+    Serial.println("WiFi shield not present");
+    // don't continue:
+    while (true);
+  }
+
+  // attempt to connect to Wifi network:
+  Serial.print("Attempting to connect to SSID: ");
+  Serial.println(ssid);
+
+  // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+  WiFi.begin(ssid, pass);
+
+  while ( WiFi.status() != WL_CONNECTED) {
+    // wait 1/2 second for connection:
+    delay ( 500 );
+    Serial.print( "." );
+  }
+  Serial.println ( "." );
 }
