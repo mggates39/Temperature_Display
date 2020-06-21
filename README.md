@@ -6,7 +6,7 @@ This demo project is just a simple sensor reader with various display modes.
 
 ## Parts 
 - 1 Arduino Nano 33 IOT
-- 1 SSD1306 0.91" 128x32 OLED screen w/I2C
+- 1 SSD1306 0.91" 128x32 or 0.96" 128x64 OLED screen w/I2C 
 - 1 AM2320 Temperature and Humidity Sensor w/I2C
 - 1 Momentary Push Button
 - 2 10K Ohm resistors
@@ -59,6 +59,15 @@ Wire the momentary Pushbutton
 
 ## Program
 The code is a relativly simple program.  After using the default setup for both the temperature sensor and the OLED Display, it loops through checking and debouncing the button to toggle the display mode: Celcius temperature, Farenheit temperature, and Humidity.
+
+### RTC Support
+Later updates added the support for showing the time from the Real Time Clock, which is set by calling an NTP client using the built in WiFi support.
+
+Note that you have to supply your WiFi SID and credentials.
+
+### 128x64 Display Support
+Additionally added support for a 128x64 display with a different layout.
+Time on top with Temperature and Humidity below.  The button toggles between Celcius and Farenheit values.
 
 ## Circuit Diagram
 The repository contains a [Fritzing](https://fritzing.org/home/) Diagram

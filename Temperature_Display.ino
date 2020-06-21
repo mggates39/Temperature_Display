@@ -160,6 +160,7 @@ void loop()
     readSensor();
   }
 
+#if SCREEN_HEIGHT == 32
   switch (displayMode)
   {
     case 1: // Centigrade Temp
@@ -179,6 +180,29 @@ void loop()
     default:
       displayTime();
   }
+#else
+  display.setTextSize(2); // Draw 2X scale text
+  displayTime();
+  display.setCursor(0, 20);
+  display.setTextSize(3); // Draw 3X scale text
+  switch (displayMode)
+  {
+    case 1: // Centigrade Temp
+    case 3: // Centigrade Temp
+      display.print(temperature);
+      display.write(9);
+      display.println("C");
+      break;
+    case 0: // Farenheight Temp
+    case 2: // Farenheight Temp
+      display.print(((temperature * 9.0) / 5.0) + 32.0);
+      display.write(9);
+      display.println("F");
+      break;
+  }
+  display.print(humidity);
+  display.println(" %");
+#endif
   display.display();
 }
 
@@ -199,13 +223,21 @@ void displayTime()
 {
   display.print(" ");
   display2digits(rtc.getHours());
+#if SCREEN_HEIGHT == 32
   if ((rtc.getSeconds() % 2) == 0)
   {
     display.print(":");
   } else {
     display.print(" ");
   }
+#else
+  display.print(":");
+#endif
   display2digits(rtc.getMinutes());
+#if SCREEN_HEIGHT == 64
+  display.print(":");
+  display2digits(rtc.getSeconds());
+#endif
 }
 
 void display2digits(int number)
