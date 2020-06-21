@@ -28,8 +28,7 @@ Next  we will wire the I2C bus.  It will require the 10K pullup resistors.
 - Wire one end of the first 10K (R1) to Arduino Pin SCL - A5
 - Wire one end of the second 10K (R2) to Arduino Pin SDA - A4
 
-Now we are read
-Wire the AM2330 temperature sensor to the Arduino.  I have found that it works best if it is the first device in the I2C bus.
+Now we are ready to wire the AM2330 temperature sensor to the Arduino.  I have found that it works best if it is the first device in the I2C bus.
 
 | I2C Pin | Usage | Breadboard position |
 | ------- | ----- | ----------- |

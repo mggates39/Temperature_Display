@@ -30,29 +30,37 @@ int lastButtonState = HIGH; // the previous reading from the input pin
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 50;   // the debounce time; increase if the output flickers
 
+void(* resetFunc) (void) = 0; //declare reset function @ address 0
+
 void setup()
 {
   Serial.begin(115200);
+  //  while (!Serial) {
+  //    ; // wait for serial port to connect. Needed for native USB port only
+  //  }
+
   Serial.println("Adafruit AM2320 Basic Test");
   am2320.begin();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
   // Address 0x3C for 128x32
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
-  { 
+  {
     Serial.println(F("SSD1306 allocation failed"));
     for (;;)
       ; // Don't proceed, loop forever
   }
 
-  // Setup the CHOOSE_DISPLAY_PIN button input pin
-  pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
-
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
   display.display();
-  delay(2000);         // Pause for 2 seconds
+
   display.cp437(true); // Use full 256 char 'Code Page 437' font
+
+  // Setup the CHOOSE_DISPLAY_PIN button input pin
+  pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
+
+  delay(2000);         // Pause for 2 seconds
 
   // Do the initial sensor read
   readSensor();
@@ -64,7 +72,7 @@ void loop()
   display.clearDisplay();
 
   display.setCursor(0, 0);
-  display.setTextSize(3); // Draw normal-scale text
+  display.setTextSize(3); // Draw 3X scale text
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(false);
 
@@ -99,6 +107,10 @@ void loop()
     }
   }
 
+  // save the reading. Next time through the loop, it'll be the lastButtonState:
+  lastButtonState = reading;
+
+  // Is it time to read the sensor again?
   if ((millis() - lastSensorReadTime) > sensorReadDelay)
   {
     readSensor();
@@ -106,28 +118,32 @@ void loop()
 
   switch (displayMode)
   {
-  case 0: // Centigrade Temp
-    display.print(temperature);
-    display.println(" C");
-    break;
-  case 1: // Farenheight Temp
-    display.print(((temperature * 9.0) / 5.0) + 32.0);
-    display.println(" F");
-    break;
-  default:
-    display.print(humidity);
-    display.println(" %");
+    case 0: // Centigrade Temp
+      display.print(temperature);
+      display.write(9);
+      display.println("C");
+      break;
+    case 1: // Farenheight Temp
+      display.print(((temperature * 9.0) / 5.0) + 32.0);
+      display.write(9);
+      display.println("F");
+      break;
+    default:
+      display.print(humidity);
+      display.println(" %");
   }
   display.display();
-
-  // save the reading. Next time through the loop, it'll be the lastButtonState:
-  lastButtonState = reading;
 }
 
 void readSensor()
 {
   temperature = am2320.readTemperature();
   humidity = am2320.readHumidity();
+
+  if (isnan(temperature) || isnan(humidity)) 
+  {
+    resetFunc();
+  }
 
   lastSensorReadTime = millis();
 }
