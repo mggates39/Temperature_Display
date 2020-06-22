@@ -1,14 +1,16 @@
 #include <Wire.h>
-#include "Adafruit_Sensor.h"
-#include "Adafruit_AM2320.h"
+#include <Adafruit_Sensor.h>
+#include <Adafruit_AM2320.h>
 #include <Adafruit_SSD1306.h>
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <RTCZero.h>
+#include <AceButton.h>
+using namespace ace_button;
 
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
-#define SCREEN_HEIGHT 32 // OLED display height, in pixels
+#define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
 #define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
@@ -26,32 +28,30 @@ float humidity = 0;
 
 #define CHOOSE_DISPLAY_PIN 2
 
-int buttonState;            // the current reading from the input pin
-int lastButtonState = HIGH; // the previous reading from the input pin
-
-// the following variables are unsigned longs because the time, measured in
-// milliseconds, will quickly become a bigger number than can be stored in an int.
-unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
-unsigned long debounceDelay = 50;   // the debounce time; increase if the output flickers
-
+// Need a UDP socket to access the NTP service
 WiFiUDP ntpUDP;
+
 // By default 'pool.ntp.org' is used with 60 seconds update interval and
 // no offset
-NTPClient timeClient(ntpUDP);
-
 // You can specify the time server pool and the offset, (in seconds)
 // additionaly you can specify the update interval (in milliseconds).
-// NTPClient timeClient(ntpUDP, "europe.pool.ntp.org", 3600, 60000);
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, -14400);
 
 /* Create an rtc object */
 RTCZero rtc;
 
 char ssid[] = "************";      //  your network SSID (name)
 char pass[] = "***********";       // your network password
-int keyIndex = 0;                  // your network key Index number (needed only for WEP)
 
 // Initialize the Wifi client library
 WiFiClient client;
+
+// Automatically uses the default ButtonConfig. We will configure this later
+// using AceButton::init() method in setup() below.
+AceButton button;
+
+void handleButtonEvent(AceButton*, uint8_t, uint8_t);
+
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -79,30 +79,41 @@ void setup()
   display.display();
 
   display.cp437(true); // Use full 256 char 'Code Page 437' font
+  display.setTextSize(3); // Draw 3X scale text
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextWrap(false);
 
   connectToAP();    // connect the board to the access point
   printWifiStatus();
 
   timeClient.begin();
 
-  timeClient.update();
-  timeClient.setTimeOffset(-14400);
-  Serial.println(timeClient.getFormattedTime());
-  Serial.println(timeClient.getDay());
-
   // Turn off the WiFi after getting ntp to save power for now.
   // We will actually use the WiFi to send data later, but
   // I am running this on a battery and I need to save power now.
-  timeClient.end();
-  client.stop();
-  WiFi.disconnect();
-  WiFi.end();
+//  timeClient.end();
+//  client.stop();
+//  WiFi.disconnect();
+//  WiFi.end();
 
   rtc.begin();
-  rtc.setEpoch(timeClient.getEpochTime());
+  updateTimeFromNTP();
+  setupRTCAlarm();
+  
 
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
+
+  // We use the AceButton::init() method here instead of using the constructor
+  // to show an alternative. Using init() allows the configuration of the
+  // hardware pin and the button to be placed closer to each other.
+  button.init(CHOOSE_DISPLAY_PIN, LOW);
+
+  // Configure the ButtonConfig with the event handler, and enable the click event
+  ButtonConfig* buttonConfig = button.getButtonConfig();
+  buttonConfig->setEventHandler(handleButtonEvent);
+  buttonConfig->setFeature(ButtonConfig::kFeatureClick);
+
 
   delay(2000);         // Pause for 2 seconds
 
@@ -112,53 +123,23 @@ void setup()
 
 void loop()
 {
-  // Clear the buffer
-  display.clearDisplay();
-
-  display.setCursor(0, 0);
-  display.setTextSize(3); // Draw 3X scale text
-  display.setTextColor(SSD1306_WHITE);
-  display.setTextWrap(false);
-
-  int reading = digitalRead(CHOOSE_DISPLAY_PIN);
-
-  // If the switch changed, due to noise or pressing:
-  if (reading != lastButtonState)
-  {
-    // reset the debouncing timer
-    lastDebounceTime = millis();
-  }
-
-  if ((millis() - lastDebounceTime) > debounceDelay)
-  {
-    // whatever the reading is at, it's been there for longer than the debounce
-    // delay, so take it as the actual current state:
-
-    // if the button state has changed:
-    if (reading != buttonState)
-    {
-      buttonState = reading;
-
-      // only toggle the mode if the new button state is LOW
-      if (buttonState == LOW)
-      {
-        displayMode++;
-        if (displayMode > 3)
-        {
-          displayMode = 0;
-        }
-      }
-    }
-  }
-
-  // save the reading. Next time through the loop, it'll be the lastButtonState:
-  lastButtonState = reading;
+  button.check();
 
   // Is it time to read the sensor again?
   if ((millis() - lastSensorReadTime) > sensorReadDelay)
   {
     readSensor();
   }
+
+  displayTheData();
+}
+
+void displayTheData()
+{
+  // Clear the buffer
+  display.clearDisplay();
+
+  display.setCursor(0, 0);
 
 #if SCREEN_HEIGHT == 32
   switch (displayMode)
@@ -204,6 +185,29 @@ void loop()
   display.println(" %");
 #endif
   display.display();
+}
+
+// The event handler for the AceButton.
+void handleButtonEvent(AceButton* /* button */, uint8_t eventType,
+    uint8_t buttonState) {
+
+  // Print out a message for all events.
+  Serial.print(F("handleButtonEvent(): eventType: "));
+  Serial.print(eventType);
+  Serial.print(F("; buttonState: "));
+  Serial.println(buttonState);
+
+  switch (eventType) {
+    case AceButton::kEventReleased:
+        displayMode++;
+        if (displayMode > 3)
+        {
+          displayMode = 0;
+        }
+      break;
+    case AceButton::kEventPressed:
+      break;
+  }
 }
 
 void readSensor()
@@ -290,4 +294,21 @@ void connectToAP() {
     Serial.print( "." );
   }
   Serial.println ( "." );
+}
+void setupRTCAlarm()
+{
+  rtc.setAlarmMinutes(42);
+  rtc.setAlarmSeconds(0);
+  rtc.enableAlarm(rtc.MATCH_MMSS);
+  rtc.attachInterrupt(updateTimeFromNTP);
+
+}
+void updateTimeFromNTP()
+{
+  timeClient.update();
+  uint32_t epochTime = timeClient.getEpochTime();
+  Serial.println(timeClient.getFormattedTime());
+
+  rtc.setEpoch(epochTime);
+
 }

@@ -22,6 +22,7 @@ This demo project is just a simple sensor reader with various display modes.
 - WiFiNINA
 - WiFiUdp
 - NTPClient
+- AceButton
 
 ## Wiring
 First we will wire up the power rails of the breadboard
@@ -68,6 +69,9 @@ Note that you have to supply your WiFi SID and credentials.
 ### 128x64 Display Support
 Additionally added support for a 128x64 display with a different layout.
 Time on top with Temperature and Humidity below.  The button toggles between Celcius and Farenheit values.
+
+### Use AceButton class
+The AceButton class allows us to simplify the loop and remove all the debounce code for the display choice button.
 
 ## Circuit Diagram
 The repository contains a [Fritzing](https://fritzing.org/home/) Diagram
