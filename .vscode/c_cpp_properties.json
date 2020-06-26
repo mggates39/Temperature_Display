@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "/home/mggates/.arduino15/packages/arduino/tools/**",
+                "/home/mggates/.arduino15/packages/arduino/hardware/samd/1.8.6/**"
+            ],
+            "forcedInclude": [
+                "/home/mggates/.arduino15/packages/arduino/hardware/samd/1.8.6/cores/arduino/Arduino.h"
+            ],
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++14"
+        }
+    ],
+    "version": 4
+}

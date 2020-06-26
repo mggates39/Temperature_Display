@@ -6,6 +6,7 @@
 #include <WiFiUdp.h>
 #include <NTPClient.h>
 #include <RTCZero.h>
+#include "MyDelay.h"
 #include <AceButton.h>
 using namespace ace_button;
 
@@ -19,9 +20,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 Adafruit_AM2320 am2320 = Adafruit_AM2320(&Wire);
 
-int displayMode = 0;
-unsigned long lastSensorReadTime = 0; // the last time the sensor was read
-unsigned long sensorReadDelay = 2000; // how lont to wait between sensor reads
+int displayMode = -1;
 
 float temperature = 0;
 float humidity = 0;
@@ -35,13 +34,17 @@ WiFiUDP ntpUDP;
 // no offset
 // You can specify the time server pool and the offset, (in seconds)
 // additionaly you can specify the update interval (in milliseconds).
-NTPClient timeClient(ntpUDP, "pool.ntp.org", 3600, -14400);
+NTPClient timeClient(ntpUDP, "pool.ntp.org", -14400, 600000);
 
 /* Create an rtc object */
 RTCZero rtc;
 
 char ssid[] = "************";      //  your network SSID (name)
 char pass[] = "***********";       // your network password
+
+const char sensorName[] = "Outside 1";
+const byte sensorId = 1;
+
 
 // Initialize the Wifi client library
 WiFiClient client;
@@ -51,7 +54,13 @@ WiFiClient client;
 AceButton button;
 
 void handleButtonEvent(AceButton*, uint8_t, uint8_t);
+void readSensor();
+void dimDisplay();
+void updateTimeFromNTP();
 
+myDelay readSensorDelay(2000, readSensor);
+myDelay dimDisplayDelay(30000, dimDisplay);
+myDelay updateRTCDelay(3600000, updateTimeFromNTP);
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -77,16 +86,23 @@ void setup()
   // Show initial display buffer contents on the screen --
   // the library initializes this with an Adafruit splash screen.
   display.display();
+  delay(500);
+
+  // Clear the buffer
+  display.clearDisplay();
+
+  display.setCursor(0, 0);
 
   display.cp437(true); // Use full 256 char 'Code Page 437' font
-  display.setTextSize(3); // Draw 3X scale text
+  display.setTextSize(1); // Draw 3X scale text
   display.setTextColor(SSD1306_WHITE);
-  display.setTextWrap(false);
+  display.setTextWrap(true);
 
   connectToAP();    // connect the board to the access point
   printWifiStatus();
 
   timeClient.begin();
+  timeClient.forceUpdate();
 
   // Turn off the WiFi after getting ntp to save power for now.
   // We will actually use the WiFi to send data later, but
@@ -97,10 +113,17 @@ void setup()
 //  WiFi.end();
 
   rtc.begin();
+  if (! rtc.isConfigured()) {
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.println("Couldn't find RTC");
+    display.display();
+    Serial.println("Couldn't find RTC");
+    while (1);
+  }
   updateTimeFromNTP();
   setupRTCAlarm();
-  
-
+ 
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
 
@@ -113,35 +136,59 @@ void setup()
   ButtonConfig* buttonConfig = button.getButtonConfig();
   buttonConfig->setEventHandler(handleButtonEvent);
   buttonConfig->setFeature(ButtonConfig::kFeatureClick);
+  
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextSize(2); // Draw 2X scale text
+  display.println(sensorName); 
+  display.display();
 
 
   delay(2000);         // Pause for 2 seconds
 
   // Do the initial sensor read
   readSensor();
+
+  readSensorDelay.start();
+  dimDisplayDelay.start();
+  updateRTCDelay.start();
 }
 
 void loop()
 {
+  timeClient.update();
+  updateRTCDelay.update();
+  readSensorDelay.update();
+  dimDisplayDelay.update();
+ 
   button.check();
 
-  // Is it time to read the sensor again?
-  if ((millis() - lastSensorReadTime) > sensorReadDelay)
-  {
-    readSensor();
-  }
-
   displayTheData();
+}
+
+void dimDisplay()
+{
+  display.dim(1);
+  dimDisplayDelay.stop();
+}
+
+void lightDisplay()
+{
+  display.dim(0);
+  dimDisplayDelay.start();
 }
 
 void displayTheData()
 {
   // Clear the buffer
   display.clearDisplay();
+  display.setTextWrap(false);
+
 
   display.setCursor(0, 0);
 
 #if SCREEN_HEIGHT == 32
+  display.setTextSize(3); // Draw 3X scale text
   switch (displayMode)
   {
     case 1: // Centigrade Temp
@@ -158,8 +205,11 @@ void displayTheData()
       display.print(humidity);
       display.println(" %");
       break;
-    default:
+    case 0:
       displayTime();
+      break;
+    default:
+      display.println(sensorName); 
   }
 #else
   display.setTextSize(2); // Draw 2X scale text
@@ -180,6 +230,11 @@ void displayTheData()
       display.write(9);
       display.println("F");
       break;
+    default:
+      display.setTextSize(2);
+      display.print(sensorName); 
+      display.setTextSize(3);
+      display.println("");
   }
   display.print(humidity);
   display.println(" %");
@@ -206,6 +261,8 @@ void handleButtonEvent(AceButton* /* button */, uint8_t eventType,
         }
       break;
     case AceButton::kEventPressed:
+        lightDisplay();
+        
       break;
   }
 }
@@ -220,7 +277,6 @@ void readSensor()
     resetFunc();
   }
 
-  lastSensorReadTime = millis();
 }
 
 void displayTime()
@@ -254,47 +310,71 @@ void display2digits(int number)
 }
 
 void printWifiStatus() {
-  Serial.print("Firmware: ");
-  Serial.println(WiFi.firmwareVersion());
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.print("Firmware: ");
+  display.println(WiFi.firmwareVersion());
 
   // print the SSID of the network you're attached to:
-  Serial.print("SSID: ");
-  Serial.println(WiFi.SSID());
+  display.print("SSID: ");
+  display.println(WiFi.SSID());
 
   // print your WiFi shield's IP address:
   IPAddress ip = WiFi.localIP();
-  Serial.print("IP Address: ");
-  Serial.println(ip);
+  display.print("IP Address: ");
+  display.println(ip);
 
   // print the received signal strength:
   long rssi = WiFi.RSSI();
-  Serial.print("signal strength (RSSI):");
-  Serial.print(rssi);
-  Serial.println(" dBm");
+  display.print("signal strength (RSSI):");
+  display.print(rssi);
+  display.println(" dBm");
+  display.display();
 }
 
 void connectToAP() {
+  int i = 0;
+  bool connected = false;
+
   // check for the presence of the shield:
   if (WiFi.status() == WL_NO_SHIELD) {
     Serial.println("WiFi shield not present");
+    display.println("WiFi shield not present");
+    display.display();
     // don't continue:
     while (true);
   }
 
-  // attempt to connect to Wifi network:
-  Serial.print("Attempting to connect to SSID: ");
-  Serial.println(ssid);
-
-  // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
-  WiFi.begin(ssid, pass);
-
-  while ( WiFi.status() != WL_CONNECTED) {
-    // wait 1/2 second for connection:
-    delay ( 500 );
-    Serial.print( "." );
+  while(!connected) {
+    display.clearDisplay();
+    display.setCursor(0,0);
+    // attempt to connect to Wifi network:
+    display.print("Attempting to connect to SSID: ");
+    display.print(ssid);
+  
+    // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
+    WiFi.begin(ssid, pass);
+    i = 0;
+    
+    while ( WiFi.status() != WL_CONNECTED) {
+      display.display();
+      // wait 1 second for connection:
+      delay ( 1000 );
+      display.print( "." );
+      i++;
+      if (i > 20) {
+        WiFi.end();
+        break;
+      }
+    }
+    if (WiFi.status() == WL_CONNECTED) {
+      connected = true;
+    }
   }
-  Serial.println ( "." );
+  display.println ( "." );
+  display.display();
 }
+
 void setupRTCAlarm()
 {
   rtc.setAlarmMinutes(42);
@@ -303,12 +383,11 @@ void setupRTCAlarm()
   rtc.attachInterrupt(updateTimeFromNTP);
 
 }
+
 void updateTimeFromNTP()
 {
-  timeClient.update();
   uint32_t epochTime = timeClient.getEpochTime();
   Serial.println(timeClient.getFormattedTime());
 
   rtc.setEpoch(epochTime);
-
 }

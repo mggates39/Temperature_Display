@@ -1,0 +1,9 @@
+{
+    "C_Cpp.default.includePath": [
+        "C_Cpp.default.includePath",
+        "/home/mggates/arduino/libraries",
+        "/home/mggates/arduino/libraries/Adafruit_Unified_Sensor"
+    ],
+    "C_Cpp.default.systemIncludePath": [],
+    "arduino.additionalUrls": ""
+}
