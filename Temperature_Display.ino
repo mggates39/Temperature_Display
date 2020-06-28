@@ -20,7 +20,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
 Adafruit_AM2320 am2320 = Adafruit_AM2320(&Wire);
 
-int displayMode = -1;
+int displayMode = 0;
 
 float temperature = 0;
 float humidity = 0;
@@ -71,7 +71,7 @@ void setup()
   //    ; // wait for serial port to connect. Needed for native USB port only
   //  }
 
-  Serial.println("Adafruit AM2320 Remote Themometer");
+  Serial.println(F("Adafruit AM2320 Remote Themometer"));
   am2320.begin();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -108,9 +108,9 @@ void setup()
   if (! rtc.isConfigured()) {
     display.clearDisplay();
     display.setCursor(0, 0);
-    display.println("Couldn't find RTC");
+    display.println(F("Couldn't find RTC"));
     display.display();
-    Serial.println("Couldn't find RTC");
+    Serial.println(F("Couldn't find RTC"));
     while (1);
   }
   updateTimeFromNTP();
@@ -181,25 +181,21 @@ void displayTheData()
   display.setTextSize(3); // Draw 3X scale text
   switch (displayMode)
   {
-    case 1: // Centigrade Temp
-      display.print(temperature);
-      display.write(9);
-      display.println("C");
-      break;
-    case 2: // Farenheight Temp
-      display.print(((temperature * 9.0) / 5.0) + 32.0);
-      display.write(9);
-      display.println("F");
-      break;
-    case 3:
-      display.print(humidity);
-      display.println(" %");
-      break;
     case 0:
       displayTime();
       break;
-    default:
-      display.println(sensorName); 
+    case 1: // Farenheight Temp
+      displayTempF();
+      break;
+    case 2: // Centigrade Temp
+      displayTempC();
+      break;
+    case 3:
+      displayHumidity();
+      break;
+    case 4:
+      display.setTextSize(2); // Draw 2X scale text
+      displaySensorName(); 
   }
 #else
   display.setTextSize(2); // Draw 2X scale text
@@ -209,25 +205,17 @@ void displayTheData()
   switch (displayMode)
   {
     case 1: // Centigrade Temp
-    case 3: // Centigrade Temp
-      display.print(temperature);
-      display.write(9);
-      display.println("C");
+      displayTempC();
+      displayHumidity();
       break;
     case 0: // Farenheight Temp
-    case 2: // Farenheight Temp
-      display.print(((temperature * 9.0) / 5.0) + 32.0);
-      display.write(9);
-      display.println("F");
+      displayTempF();
+      displayHumidity();
       break;
-    default:
+    case 2: // Sensor Name
       display.setTextSize(2);
-      display.print(sensorName); 
-      display.setTextSize(3);
-      display.println("");
+      display.println(sensorName); 
   }
-  display.print(humidity);
-  display.println(" %");
 #endif
   display.display();
 }
@@ -245,7 +233,11 @@ void handleButtonEvent(AceButton* /* button */, uint8_t eventType,
   switch (eventType) {
     case AceButton::kEventReleased:
         displayMode++;
-        if (displayMode > 3)
+#if SCREEN_HEIGHT == 32
+        if (displayMode > 4)
+#else
+        if (displayMode > 2)
+#endif        
         {
           displayMode = 0;
         }
@@ -267,6 +259,27 @@ void readSensor()
     resetFunc();
   }
 
+}
+
+void displayTempF() {
+  display.print(((temperature * 9.0) / 5.0) + 32.0);
+  display.write(9);
+  display.println("F");
+}
+
+void displayTempC() {
+  display.print(temperature);
+  display.write(9);
+  display.println("C");
+}
+
+void displayHumidity() {
+  display.print(humidity);
+  display.println(" %");
+}
+
+void displaySensorName() {
+  display.println(sensorName);  
 }
 
 void displayTime()
