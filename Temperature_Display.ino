@@ -34,13 +34,13 @@ WiFiUDP ntpUDP;
 // no offset
 // You can specify the time server pool and the offset, (in seconds)
 // additionaly you can specify the update interval (in milliseconds).
-NTPClient timeClient(ntpUDP, "pool.ntp.org", -14400, 600000);
+NTPClient timeClient(ntpUDP, "pool.ntp.org", -14400, 60000);
 
 /* Create an rtc object */
 RTCZero rtc;
 
-char ssid[] = "************";      //  your network SSID (name)
-char pass[] = "***********";       // your network password
+const char ssid[] = "************";      //  your network SSID (name)
+const char pass[] = "***********";       // your network password
 
 const char sensorName[] = "Outside 1";
 const byte sensorId = 1;
@@ -58,9 +58,9 @@ void readSensor();
 void dimDisplay();
 void updateTimeFromNTP();
 
-myDelay readSensorDelay(2000, readSensor);
-myDelay dimDisplayDelay(30000, dimDisplay);
-myDelay updateRTCDelay(3600000, updateTimeFromNTP);
+myDelay readSensorDelay(2000, readSensor);          // 2 second delay for reading sensor
+myDelay dimDisplayDelay(30000, dimDisplay);         // Dim the display after 30 seconds of inactivity
+myDelay updateRTCDelay(600000, updateTimeFromNTP);  // Update the RTC every 10 minutes
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -71,11 +71,11 @@ void setup()
   //    ; // wait for serial port to connect. Needed for native USB port only
   //  }
 
-  Serial.println("Adafruit AM2320 Basic Test");
+  Serial.println("Adafruit AM2320 Remote Themometer");
   am2320.begin();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
-  // Address 0x3C for 128x32
+  // Address 0x3C for 128x32 and 128x64
   if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C))
   {
     Serial.println(F("SSD1306 allocation failed"));
@@ -94,7 +94,7 @@ void setup()
   display.setCursor(0, 0);
 
   display.cp437(true); // Use full 256 char 'Code Page 437' font
-  display.setTextSize(1); // Draw 3X scale text
+  display.setTextSize(1); // Draw normal scale text
   display.setTextColor(SSD1306_WHITE);
   display.setTextWrap(true);
 
@@ -103,14 +103,6 @@ void setup()
 
   timeClient.begin();
   timeClient.forceUpdate();
-
-  // Turn off the WiFi after getting ntp to save power for now.
-  // We will actually use the WiFi to send data later, but
-  // I am running this on a battery and I need to save power now.
-//  timeClient.end();
-//  client.stop();
-//  WiFi.disconnect();
-//  WiFi.end();
 
   rtc.begin();
   if (! rtc.isConfigured()) {
@@ -122,7 +114,6 @@ void setup()
     while (1);
   }
   updateTimeFromNTP();
-  setupRTCAlarm();
  
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
@@ -143,12 +134,12 @@ void setup()
   display.println(sensorName); 
   display.display();
 
-
   delay(2000);         // Pause for 2 seconds
 
   // Do the initial sensor read
   readSensor();
 
+  // Start all the delay timers
   readSensorDelay.start();
   dimDisplayDelay.start();
   updateRTCDelay.start();
@@ -183,7 +174,6 @@ void displayTheData()
   // Clear the buffer
   display.clearDisplay();
   display.setTextWrap(false);
-
 
   display.setCursor(0, 0);
 
@@ -373,15 +363,6 @@ void connectToAP() {
   }
   display.println ( "." );
   display.display();
-}
-
-void setupRTCAlarm()
-{
-  rtc.setAlarmMinutes(42);
-  rtc.setAlarmSeconds(0);
-  rtc.enableAlarm(rtc.MATCH_MMSS);
-  rtc.attachInterrupt(updateTimeFromNTP);
-
 }
 
 void updateTimeFromNTP()
