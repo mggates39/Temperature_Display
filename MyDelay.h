@@ -13,6 +13,7 @@ class myDelay {
 
 
     void setDelay(unsigned long);
+    void setCallback(funTocall);
     void setRepeat(int);
     bool update();
     bool isRunning();
