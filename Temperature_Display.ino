@@ -14,7 +14,7 @@ using namespace ace_button;
 #define SCREEN_HEIGHT 64 // OLED display height, in pixels
 
 // Declaration for an SSD1306 display connected to I2C (SDA, SCL pins)
-#define OLED_RESET 4 // Reset pin # (or -1 if sharing Arduino reset pin)
+#define OLED_RESET -1 // Reset pin # (or -1 if sharing Arduino reset pin)
 
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 
@@ -60,16 +60,16 @@ void updateTimeFromNTP();
 
 myDelay readSensorDelay(2000, readSensor);          // 2 second delay for reading sensor
 myDelay dimDisplayDelay(30000, dimDisplay);         // Dim the display after 30 seconds of inactivity
-myDelay updateRTCDelay(600000, updateTimeFromNTP);  // Update the RTC every 10 minutes
+myDelay updateRTCDelay(300000, updateTimeFromNTP);  // Update the RTC every 5 minutes
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
 void setup()
 {
   Serial.begin(115200);
-  //  while (!Serial) {
-  //    ; // wait for serial port to connect. Needed for native USB port only
-  //  }
+//  while (!Serial) {
+//    ; // wait for serial port to connect. Needed for native USB port only
+//  }
 
   Serial.println(F("Adafruit AM2320 Remote Themometer"));
   am2320.begin();
@@ -284,8 +284,7 @@ void displaySensorName() {
 
 void displayTime()
 {
-  display.print(" ");
-  display2digits(rtc.getHours());
+  displayHoursDigits(rtc.getHours());
 #if SCREEN_HEIGHT == 32
   if ((rtc.getSeconds() % 2) == 0)
   {
@@ -301,6 +300,26 @@ void displayTime()
   display.print(":");
   display2digits(rtc.getSeconds());
 #endif
+  if (rtc.getHours() < 12) {
+    display.print(" A");
+  } else {
+    display.print(" P");
+  }
+}
+
+void displayHoursDigits(int number)
+{
+  if (number == 0) {
+    number = 12;
+  }
+  if (number > 12) {
+    number -= 12;
+  }
+  if (number < 10)
+  {
+    display.print(" ");
+  }
+  display.print(number);
 }
 
 void display2digits(int number)
