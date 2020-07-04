@@ -21,13 +21,13 @@ class myDelay {
     void stop();
 
   private:
-    unsigned long preMills, curMills, delaytime;
-    int initialRepeatCount = MYDELAY_REPEAT_FOREVER;
-    int currentRepeatCount = 0;
+    unsigned long _preMills, _curMills, _delaytime;
+    int _initialRepeatCount = MYDELAY_REPEAT_FOREVER;
+    int _currentRepeatCount = 0;
     funTocall _funcall;
-    bool useFunction = false;
-    bool running = false;
-    bool repeating = true;
+    bool _useFunction = false;
+    bool _running = false;
+    bool _repeating = true;
 };
 
 #endif

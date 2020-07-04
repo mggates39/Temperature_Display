@@ -7,72 +7,72 @@
 #include "MyDelay.h"
 
 myDelay::myDelay(void) {
-  this->preMills = 0;
+  this->_preMills = 0;
   this->setDelay(0);
 }
 
 myDelay::myDelay(unsigned long dtime) {
-  this->preMills = 0;
+  this->_preMills = 0;
   this->setDelay(dtime);
 }
 
 myDelay::myDelay(unsigned long dtime, funTocall funcall) {
-  this->preMills = 0;
+  this->_preMills = 0;
   this->setDelay(dtime);
   this->setCallback(funcall);
 }
 
 myDelay::myDelay(unsigned long dtime, funTocall funcall, int repeatCount) {
-  this->preMills = 0;
+  this->_preMills = 0;
   this->setDelay(dtime);
   this->setCallback(funcall);
   this->setRepeat(repeatCount);
 }
 
 void myDelay::setDelay(unsigned long dtime) {
-  this->delaytime = dtime;
+  this->_delaytime = dtime;
 }
 
 void myDelay::setCallback(funTocall funcall) {
   if (funcall != 0) {
     this->_funcall = funcall;
-    this->useFunction = true;
+    this->_useFunction = true;
   } else {
-    this->useFunction = false;
+    this->_useFunction = false;
   }
 }
 
 void myDelay::setRepeat(int repeatCount) {
-  this->initialRepeatCount = repeatCount;
-  this->currentRepeatCount = repeatCount;
-  this->repeating = true;
+  this->_initialRepeatCount = repeatCount;
+  this->_currentRepeatCount = repeatCount;
+  this->_repeating = true;
 }
 
 void myDelay::start() {
-  this->preMills = millis();
-  this->currentRepeatCount = initialRepeatCount;
-  this->running = true;
+  this->_preMills = millis();
+  this->_currentRepeatCount = this->_initialRepeatCount;
+  this->_running = true;
 }
 
 void myDelay::stop() {
-  this->preMills = 0;
-  this->running = false;
+  this->_preMills = 0;
+  this->_running = false;
 }
 
 bool myDelay::update() {
-  if (this->running) {
-    this->curMills = millis();
-    if (this->curMills - this->preMills >= this->delaytime) {
-      if (this->repeating) {
-        if (this->initialRepeatCount != MYDELAY_REPEAT_FOREVER) {
-          this->currentRepeatCount--;
-          if (this->currentRepeatCount == 0) {
-            stop();
+  if (this->_running) {
+    this->_curMills = millis();
+    if (this->_curMills - this->_preMills >= this->_delaytime) {
+      if (this->_repeating) {
+        if (this->_initialRepeatCount != MYDELAY_REPEAT_FOREVER) {
+          this->_currentRepeatCount--;
+          if (this->_currentRepeatCount == 0) {
+            this->stop();
           }
         }
       }
-      this->preMills = this->curMills;
-      if (this->useFunction == true) {
+      this->_preMills = this->_curMills;
+      if (this->_useFunction == true) {
         this->_funcall();
         return true;
       } else {
@@ -87,5 +87,5 @@ bool myDelay::update() {
 }
 
 bool myDelay::isRunning() {
-  return this->running;
+  return this->_running;
 }
