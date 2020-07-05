@@ -3,6 +3,15 @@
         {
             "name": "Linux",
             "includePath": [
+                "/home/mggates/Arduino/libraries/Time",
+                "/home/mggates/Arduino/libraries/Adafruit_Unified_Sensor",
+                "/home/mggates/Arduino/libraries/RTCZero/src",
+                "/home/mggates/Arduino/libraries/AceButton/src",
+                "/home/mggates/Arduino/libraries/Adafruit_AM2320_sensor_library",
+                "/home/mggates/Arduino/libraries/Adafruit_GFX_Library",
+                "/home/mggates/Arduino/libraries/Adafruit_SSD1306",
+                "/home/mggates/Arduino/libraries/NTPClient",
+                "/home/mggates/Arduino/libraries/WiFiNINA/src",
                 "/home/mggates/.arduino15/packages/arduino/tools/**",
                 "/home/mggates/.arduino15/packages/arduino/hardware/samd/1.8.6/**"
             ],
