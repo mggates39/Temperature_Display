@@ -1,3 +1,6 @@
+#include <Time.h>
+#include <TimeLib.h>
+
 #include <Wire.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_AM2320.h>
@@ -5,7 +8,6 @@
 #include <WiFiNINA.h>
 #include <WiFiUdp.h>
 #include <NTPClient.h>
-#include <RTCZero.h>
 #include "MyDelay.h"
 #include <AceButton.h>
 using namespace ace_button;
@@ -36,11 +38,10 @@ WiFiUDP ntpUDP;
 // additionaly you can specify the update interval (in milliseconds).
 NTPClient timeClient(ntpUDP, "pool.ntp.org", -14400, 60000);
 
-/* Create an rtc object */
-RTCZero rtc;
 
-const char ssid[] = "************";      //  your network SSID (name)
-const char pass[] = "***********";       // your network password
+
+const char ssid[] = "your_sid";     // your network SSID (name)
+const char pass[] = "your_pass";    // your network password
 
 const char sensorName[] = "Outside 1";
 const byte sensorId = 1;
@@ -56,11 +57,9 @@ AceButton button;
 void handleButtonEvent(AceButton*, uint8_t, uint8_t);
 void readSensor();
 void dimDisplay();
-void updateTimeFromNTP();
 
 myDelay readSensorDelay(2000, readSensor);          // 2 second delay for reading sensor
 myDelay dimDisplayDelay(30000, dimDisplay);         // Dim the display after 30 seconds of inactivity
-myDelay updateRTCDelay(300000, updateTimeFromNTP);  // Update the RTC every 5 minutes
 
 void(* resetFunc) (void) = 0; //declare reset function @ address 0
 
@@ -104,16 +103,7 @@ void setup()
   timeClient.begin();
   timeClient.forceUpdate();
 
-  rtc.begin();
-  if (! rtc.isConfigured()) {
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.println(F("Couldn't find RTC"));
-    display.display();
-    Serial.println(F("Couldn't find RTC"));
-    while (1);
-  }
-  updateTimeFromNTP();
+  setSyncProvider(updateTimeFromNTP);
  
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
@@ -142,13 +132,11 @@ void setup()
   // Start all the delay timers
   readSensorDelay.start();
   dimDisplayDelay.start();
-  updateRTCDelay.start();
 }
 
 void loop()
 {
   timeClient.update();
-  updateRTCDelay.update();
   readSensorDelay.update();
   dimDisplayDelay.update();
  
@@ -284,9 +272,9 @@ void displaySensorName() {
 
 void displayTime()
 {
-  displayHoursDigits(rtc.getHours());
+  displayHoursDigits(hour());
 #if SCREEN_HEIGHT == 32
-  if ((rtc.getSeconds() % 2) == 0)
+  if ((second() % 2) == 0)
   {
     display.print(":");
   } else {
@@ -295,12 +283,12 @@ void displayTime()
 #else
   display.print(":");
 #endif
-  display2digits(rtc.getMinutes());
+  display2digits(minute());
 #if SCREEN_HEIGHT == 64
   display.print(":");
-  display2digits(rtc.getSeconds());
+  display2digits(second());
 #endif
-  if (rtc.getHours() < 12) {
+  if (hour() < 12) {
     display.print(" A");
   } else {
     display.print(" P");
@@ -397,10 +385,11 @@ void connectToAP() {
   display.display();
 }
 
-void updateTimeFromNTP()
+time_t updateTimeFromNTP()
 {
+  timeClient.forceUpdate();
   uint32_t epochTime = timeClient.getEpochTime();
   Serial.println(timeClient.getFormattedTime());
 
-  rtc.setEpoch(epochTime);
+  return epochTime;
 }
