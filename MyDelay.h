@@ -4,7 +4,15 @@
 
 typedef void (*funTocall)(void);
 
-class myDelay {
+/**
+ * Implement a "delay" with the mills() call.
+ * Must call update method in the main loop
+ * Must have a delay
+ * Can have a callback function to be called when timere expires
+ * Can have a repeat count
+ * 
+ */
+ class myDelay {
   public:
     myDelay(void);
     myDelay(unsigned long dtime);
@@ -17,6 +25,10 @@ class myDelay {
     void setRepeat(int);
     bool update();
     bool isRunning();
+
+    /**
+     * Start the timer
+     */
     void start();
     void stop();
 
