@@ -70,7 +70,7 @@ void setup()
 //    ; // wait for serial port to connect. Needed for native USB port only
 //  }
 
-  Serial.println(F("Adafruit AM2320 Remote Themometer"));
+  Serial.println(F("Adafruit AM2320 Remote Thermometer"));
   am2320.begin();
 
   // SSD1306_SWITCHCAPVCC = generate display voltage from 3.3V internally
@@ -104,7 +104,7 @@ void setup()
   timeClient.forceUpdate();
 
   setSyncProvider(updateTimeFromNTP);
- 
+
   // Setup the CHOOSE_DISPLAY_PIN button input pin
   pinMode(CHOOSE_DISPLAY_PIN, INPUT_PULLUP);
 
@@ -117,11 +117,11 @@ void setup()
   ButtonConfig* buttonConfig = button.getButtonConfig();
   buttonConfig->setEventHandler(handleButtonEvent);
   buttonConfig->setFeature(ButtonConfig::kFeatureClick);
-  
+
   display.clearDisplay();
   display.setCursor(0, 0);
   display.setTextSize(2); // Draw 2X scale text
-  display.println(sensorName); 
+  display.println(sensorName);
   display.display();
 
   delay(2000);         // Pause for 2 seconds
@@ -134,25 +134,36 @@ void setup()
   dimDisplayDelay.start();
 }
 
+time_t prevDisplay = 0; // when the digital clock was displayed
+
+
 void loop()
 {
-  timeClient.update();
+  //  timeClient.update();
   readSensorDelay.update();
   dimDisplayDelay.update();
- 
+
   button.check();
 
-  displayTheData();
+  if (timeStatus() != timeNotSet) {
+    if (now() != prevDisplay) { //update the display only if time has changed
+      prevDisplay = now();
+      displayTheData();
+    }
+  }
+
 }
 
 void dimDisplay()
 {
+  Serial.println("dim display");
   display.dim(1);
   dimDisplayDelay.stop();
 }
 
 void lightDisplay()
 {
+  Serial.println("light display");
   display.dim(0);
   dimDisplayDelay.start();
 }
@@ -183,7 +194,7 @@ void displayTheData()
       break;
     case 4:
       display.setTextSize(2); // Draw 2X scale text
-      displaySensorName(); 
+      displaySensorName();
   }
 #else
   display.setTextSize(2); // Draw 2X scale text
@@ -202,7 +213,7 @@ void displayTheData()
       break;
     case 2: // Sensor Name
       display.setTextSize(2);
-      display.println(sensorName); 
+      display.println(sensorName);
   }
 #endif
   display.display();
@@ -210,7 +221,7 @@ void displayTheData()
 
 // The event handler for the AceButton.
 void handleButtonEvent(AceButton* /* button */, uint8_t eventType,
-    uint8_t buttonState) {
+                       uint8_t buttonState) {
 
   // Print out a message for all events.
   Serial.print(F("handleButtonEvent(): eventType: "));
@@ -220,25 +231,26 @@ void handleButtonEvent(AceButton* /* button */, uint8_t eventType,
 
   switch (eventType) {
     case AceButton::kEventReleased:
-        displayMode++;
+      displayMode++;
 #if SCREEN_HEIGHT == 32
-        if (displayMode > 4)
+      if (displayMode > 4)
 #else
-        if (displayMode > 2)
-#endif        
-        {
-          displayMode = 0;
-        }
+      if (displayMode > 2)
+#endif
+      {
+        displayMode = 0;
+      }
       break;
     case AceButton::kEventPressed:
-        lightDisplay();
-        
+      lightDisplay();
+
       break;
   }
 }
 
 void readSensor()
 {
+  Serial.println("Reading sensor");
   temperature = am2320.readTemperature();
   humidity = am2320.readHumidity();
 
@@ -267,7 +279,7 @@ void displayHumidity() {
 }
 
 void displaySensorName() {
-  display.println(sensorName);  
+  display.println(sensorName);
 }
 
 void displayTime()
@@ -355,17 +367,17 @@ void connectToAP() {
     while (true);
   }
 
-  while(!connected) {
+  while (!connected) {
     display.clearDisplay();
-    display.setCursor(0,0);
+    display.setCursor(0, 0);
     // attempt to connect to Wifi network:
     display.print("Attempting to connect to SSID: ");
     display.print(ssid);
-  
+
     // Connect to WPA/WPA2 network. Change this line if using open or WEP network:
     WiFi.begin(ssid, pass);
     i = 0;
-    
+
     while ( WiFi.status() != WL_CONNECTED) {
       display.display();
       // wait 1 second for connection:
@@ -389,6 +401,7 @@ time_t updateTimeFromNTP()
 {
   timeClient.forceUpdate();
   uint32_t epochTime = timeClient.getEpochTime();
+  Serial.print("Updating time to ");
   Serial.println(timeClient.getFormattedTime());
 
   return epochTime;
